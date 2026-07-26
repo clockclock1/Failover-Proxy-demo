@@ -42,7 +42,7 @@ function SharedLiveStatusPage() {
   }, [token]);
 
   return (
-    <div data-theme="dark" className="uiverse-shell min-h-dvh bg-slate-100">
+    <div data-theme="dark" className="uiverse-shell min-h-dvh bg-slate-100 md:flex md:h-screen md:overflow-hidden">
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl p-3 pb-8 transition-all duration-300 sm:p-4 md:p-6 lg:p-8">
           {error ? (
