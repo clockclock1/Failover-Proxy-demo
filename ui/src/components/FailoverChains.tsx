@@ -80,8 +80,13 @@ function ChainEditor({
   const [targetMaxRetries, setTargetMaxRetries] = useState(chain?.targetMaxRetries ?? chain?.models?.[0]?.maxRetries ?? 0);
   const [circuitFailureThreshold, setCircuitFailureThreshold] = useState(chain?.circuitFailureThreshold || 3);
   const [circuitCooldownMinutes, setCircuitCooldownMinutes] = useState(chain?.circuitCooldownMinutes || 10);
+  const [rateLimitKeyCooldownSeconds, setRateLimitKeyCooldownSeconds] = useState(chain?.rateLimitKeyCooldownSeconds || 60);
+  const [authKeyCooldownMinutes, setAuthKeyCooldownMinutes] = useState(chain?.authKeyCooldownMinutes || 30);
+  const [transientFailureThreshold, setTransientFailureThreshold] = useState(chain?.transientFailureThreshold || 3);
+  const [transientCooldownSeconds, setTransientCooldownSeconds] = useState(chain?.transientCooldownSeconds || 60);
+  const [compatibilityCooldownMinutes, setCompatibilityCooldownMinutes] = useState(chain?.compatibilityCooldownMinutes || 10);
   const [models, setModels] = useState<FailoverModel[]>(() => normalizeQueue(chain?.models || []));
-  const [activeSection, setActiveSection] = useState<'settings' | 'models'>('settings');
+  const [activeSection, setActiveSection] = useState<'settings' | 'breaker' | 'models'>('settings');
   const [modelQuery, setModelQuery] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -214,6 +219,11 @@ function ChainEditor({
     const contextWindow = Math.max(1024, Math.min(4_294_967_295, Math.floor(Number(contextWindowTokens) || 1_000_000)));
     const failureThreshold = Math.max(1, Math.min(100, Math.floor(Number(circuitFailureThreshold) || 3)));
     const cooldownMinutes = Math.max(1, Math.min(1440, Math.floor(Number(circuitCooldownMinutes) || 10)));
+    const rateLimitCooldown = Math.max(1, Math.min(86400, Math.floor(Number(rateLimitKeyCooldownSeconds) || 60)));
+    const authKeyCooldown = Math.max(1, Math.min(1440, Math.floor(Number(authKeyCooldownMinutes) || 30)));
+    const transientThreshold = Math.max(1, Math.min(100, Math.floor(Number(transientFailureThreshold) || 3)));
+    const transientCooldown = Math.max(1, Math.min(86400, Math.floor(Number(transientCooldownSeconds) || 60)));
+    const compatibilityCooldown = Math.max(1, Math.min(1440, Math.floor(Number(compatibilityCooldownMinutes) || 10)));
     const nextModels = normalizeQueue(models).map(model => ({
       ...model,
       timeout,
@@ -232,6 +242,11 @@ function ChainEditor({
       targetMaxRetries: maxRetries,
       circuitFailureThreshold: failureThreshold,
       circuitCooldownMinutes: cooldownMinutes,
+      rateLimitKeyCooldownSeconds: rateLimitCooldown,
+      authKeyCooldownMinutes: authKeyCooldown,
+      transientFailureThreshold: transientThreshold,
+      transientCooldownSeconds: transientCooldown,
+      compatibilityCooldownMinutes: compatibilityCooldown,
       models: nextModels,
       enabled: chain?.enabled ?? true,
       createdAt: chain?.createdAt || Date.now(),
@@ -290,6 +305,24 @@ function ChainEditor({
             </button>
             <button
               type="button"
+              onClick={() => setActiveSection('breaker')}
+              className={cn(
+                'chain-editor-tab flex min-w-[180px] items-center gap-3 rounded-lg border px-3 py-3 text-left transition-all',
+                activeSection === 'breaker'
+                  ? 'border-amber-200 bg-white text-amber-700 shadow-sm'
+                  : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-700'
+              )}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <ShieldAlert size={16} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">熔断策略</span>
+                <span className="block truncate text-xs opacity-75">状态码、密钥冷却和故障阈值</span>
+              </span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveSection('models')}
               className={cn(
                 'chain-editor-tab flex min-w-[180px] items-center gap-3 rounded-lg border px-3 py-3 text-left transition-all',
@@ -312,8 +345,10 @@ function ChainEditor({
             'min-h-0 flex-1 p-4 sm:p-6',
             activeSection === 'models' ? 'flex overflow-hidden' : 'overflow-y-auto'
           )}>
-            {activeSection === 'settings' ? (
-              <div key="settings" className="chain-editor-panel space-y-5">
+            {activeSection !== 'models' ? (
+              <div key={activeSection} className="chain-editor-panel space-y-5">
+                {activeSection === 'settings' && (
+                  <>
           {/* Basic Info */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
@@ -414,6 +449,10 @@ function ChainEditor({
             </div>
           </div>
 
+                  </>
+                )}
+                {activeSection === 'breaker' && (
+                  <>
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-start gap-3">
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
@@ -448,8 +487,45 @@ function ChainEditor({
                 />
               </label>
             </div>
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-semibold text-slate-700">HTTP 状态码处理规则</div>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-2">
+                <div><code className="rounded bg-white px-1.5 py-0.5 text-amber-700">401 / 403</code> 仅冷却命中的 API 密钥</div>
+                <div><code className="rounded bg-white px-1.5 py-0.5 text-amber-700">429</code> 冷却密钥后优先轮换 API 密钥</div>
+                <div><code className="rounded bg-white px-1.5 py-0.5 text-rose-700">408 / 409 / 5xx</code> 按瞬时故障阈值熔断目标</div>
+                <div><code className="rounded bg-white px-1.5 py-0.5 text-violet-700">404 / 405 / 406 / 415 / 501</code> 立即按兼容性熔断目标</div>
+              </div>
+            </div>
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              401、403 和 429 仅冷却命中的 API 密钥；超时和 5xx 使用瞬时故障策略；不支持的端点使用兼容性策略。
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">429 API 密钥冷却时间（秒）</span>
+                <input type="number" min={1} max={86400} value={rateLimitKeyCooldownSeconds} onChange={event => setRateLimitKeyCooldownSeconds(Math.max(1, Math.min(86400, Number(event.target.value) || 60)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">401/403 API 密钥冷却时间（分钟）</span>
+                <input type="number" min={1} max={1440} value={authKeyCooldownMinutes} onChange={event => setAuthKeyCooldownMinutes(Math.max(1, Math.min(1440, Number(event.target.value) || 30)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">瞬时故障熔断阈值</span>
+                <input type="number" min={1} max={100} value={transientFailureThreshold} onChange={event => setTransientFailureThreshold(Math.max(1, Math.min(100, Number(event.target.value) || 3)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">瞬时故障冷却时间（秒）</span>
+                <input type="number" min={1} max={86400} value={transientCooldownSeconds} onChange={event => setTransientCooldownSeconds(Math.max(1, Math.min(86400, Number(event.target.value) || 60)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">兼容性熔断冷却时间（分钟）</span>
+                <input type="number" min={1} max={1440} value={compatibilityCooldownMinutes} onChange={event => setCompatibilityCooldownMinutes(Math.max(1, Math.min(1440, Number(event.target.value) || 10)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+              </label>
+            </div>
           </div>
-
+                  </>
+                )}
+                {activeSection === 'settings' && (
+                  <>
           {/* Strategy */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">故障转移策略</label>
@@ -472,6 +548,8 @@ function ChainEditor({
             </div>
             <p className="text-xs text-slate-400 mt-1">{strategyLabels[strategy].desc}</p>
           </div>
+                  </>
+                )}
 
               </div>
             ) : (
