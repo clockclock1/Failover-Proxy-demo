@@ -82,9 +82,6 @@ function ChainEditor({
   const [circuitCooldownMinutes, setCircuitCooldownMinutes] = useState(chain?.circuitCooldownMinutes || 10);
   const [rateLimitKeyCooldownSeconds, setRateLimitKeyCooldownSeconds] = useState(chain?.rateLimitKeyCooldownSeconds || 60);
   const [authKeyCooldownMinutes, setAuthKeyCooldownMinutes] = useState(chain?.authKeyCooldownMinutes || 30);
-  const [transientFailureThreshold, setTransientFailureThreshold] = useState(chain?.transientFailureThreshold || 3);
-  const [transientCooldownSeconds, setTransientCooldownSeconds] = useState(chain?.transientCooldownSeconds || 60);
-  const [compatibilityCooldownMinutes, setCompatibilityCooldownMinutes] = useState(chain?.compatibilityCooldownMinutes || 10);
   const [models, setModels] = useState<FailoverModel[]>(() => normalizeQueue(chain?.models || []));
   const [activeSection, setActiveSection] = useState<'settings' | 'breaker' | 'models'>('settings');
   const [modelQuery, setModelQuery] = useState('');
@@ -221,9 +218,6 @@ function ChainEditor({
     const cooldownMinutes = Math.max(1, Math.min(1440, Math.floor(Number(circuitCooldownMinutes) || 10)));
     const rateLimitCooldown = Math.max(1, Math.min(86400, Math.floor(Number(rateLimitKeyCooldownSeconds) || 60)));
     const authKeyCooldown = Math.max(1, Math.min(1440, Math.floor(Number(authKeyCooldownMinutes) || 30)));
-    const transientThreshold = Math.max(1, Math.min(100, Math.floor(Number(transientFailureThreshold) || 3)));
-    const transientCooldown = Math.max(1, Math.min(86400, Math.floor(Number(transientCooldownSeconds) || 60)));
-    const compatibilityCooldown = Math.max(1, Math.min(1440, Math.floor(Number(compatibilityCooldownMinutes) || 10)));
     const nextModels = normalizeQueue(models).map(model => ({
       ...model,
       timeout,
@@ -244,9 +238,6 @@ function ChainEditor({
       circuitCooldownMinutes: cooldownMinutes,
       rateLimitKeyCooldownSeconds: rateLimitCooldown,
       authKeyCooldownMinutes: authKeyCooldown,
-      transientFailureThreshold: transientThreshold,
-      transientCooldownSeconds: transientCooldown,
-      compatibilityCooldownMinutes: compatibilityCooldown,
       models: nextModels,
       enabled: chain?.enabled ?? true,
       createdAt: chain?.createdAt || Date.now(),
@@ -492,12 +483,12 @@ function ChainEditor({
               <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-2">
                 <div><code className="rounded bg-white px-1.5 py-0.5 text-amber-700">401 / 403</code> 仅冷却命中的 API 密钥</div>
                 <div><code className="rounded bg-white px-1.5 py-0.5 text-amber-700">429</code> 冷却密钥后优先轮换 API 密钥</div>
-                <div><code className="rounded bg-white px-1.5 py-0.5 text-rose-700">408 / 409 / 5xx</code> 按瞬时故障阈值熔断目标</div>
-                <div><code className="rounded bg-white px-1.5 py-0.5 text-violet-700">404 / 405 / 406 / 415 / 501</code> 立即按兼容性熔断目标</div>
+                <div><code className="rounded bg-white px-1.5 py-0.5 text-sky-700">超时 / 408 / 409 / 5xx</code> 与其他故障一样按顶部规则处理</div>
+                <div><code className="rounded bg-white px-1.5 py-0.5 text-violet-700">404 / 405 / 406 / 415 / 501</code> 立即熔断，禁用时长使用顶部设置</div>
               </div>
             </div>
             <p className="mt-4 text-xs leading-5 text-slate-500">
-              401、403 和 429 仅冷却命中的 API 密钥；超时和 5xx 使用瞬时故障策略；不支持的端点使用兼容性策略。
+              401、403 和 429 仅冷却命中的 API 密钥；其余所有故障均按顶部的连续失败次数和禁用分钟数处理。
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="block">
@@ -507,18 +498,6 @@ function ChainEditor({
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500">401/403 API 密钥冷却时间（分钟）</span>
                 <input type="number" min={1} max={1440} value={authKeyCooldownMinutes} onChange={event => setAuthKeyCooldownMinutes(Math.max(1, Math.min(1440, Number(event.target.value) || 30)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">瞬时故障熔断阈值</span>
-                <input type="number" min={1} max={100} value={transientFailureThreshold} onChange={event => setTransientFailureThreshold(Math.max(1, Math.min(100, Number(event.target.value) || 3)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">瞬时故障冷却时间（秒）</span>
-                <input type="number" min={1} max={86400} value={transientCooldownSeconds} onChange={event => setTransientCooldownSeconds(Math.max(1, Math.min(86400, Number(event.target.value) || 60)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">兼容性熔断冷却时间（分钟）</span>
-                <input type="number" min={1} max={1440} value={compatibilityCooldownMinutes} onChange={event => setCompatibilityCooldownMinutes(Math.max(1, Math.min(1440, Number(event.target.value) || 10)))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
               </label>
             </div>
           </div>

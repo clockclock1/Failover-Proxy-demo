@@ -27,9 +27,6 @@ interface BackendModel {
     cooldownMinutes?: number;
     rateLimitKeyCooldownSeconds?: number;
     authKeyCooldownMinutes?: number;
-    transientFailureThreshold?: number;
-    transientCooldownSeconds?: number;
-    compatibilityCooldownMinutes?: number;
   };
   targets?: BackendTarget[];
 }
@@ -55,9 +52,6 @@ interface BackendConfig {
     cooldownMinutes?: number;
     rateLimitKeyCooldownSeconds?: number;
     authKeyCooldownMinutes?: number;
-    transientFailureThreshold?: number;
-    transientCooldownSeconds?: number;
-    compatibilityCooldownMinutes?: number;
   };
   modelSource?: unknown;
   providers?: BackendProvider[];
@@ -177,9 +171,6 @@ const defaultConfig: BackendConfig = {
     cooldownMinutes: 10,
     rateLimitKeyCooldownSeconds: 60,
     authKeyCooldownMinutes: 30,
-    transientFailureThreshold: 3,
-    transientCooldownSeconds: 60,
-    compatibilityCooldownMinutes: 10,
   },
   modelSource: {
     enabled: false,
@@ -266,9 +257,6 @@ function normalizeChain(chain: FailoverChain): FailoverChain {
     circuitCooldownMinutes: Math.max(1, Math.floor(Number(chain.circuitCooldownMinutes) || 10)),
     rateLimitKeyCooldownSeconds: Math.max(1, Math.floor(Number(chain.rateLimitKeyCooldownSeconds) || 60)),
     authKeyCooldownMinutes: Math.max(1, Math.floor(Number(chain.authKeyCooldownMinutes) || 30)),
-    transientFailureThreshold: Math.max(1, Math.floor(Number(chain.transientFailureThreshold) || 3)),
-    transientCooldownSeconds: Math.max(1, Math.floor(Number(chain.transientCooldownSeconds) || 60)),
-    compatibilityCooldownMinutes: Math.max(1, Math.floor(Number(chain.compatibilityCooldownMinutes) || 10)),
     models,
   };
 }
@@ -573,9 +561,6 @@ function backendToUi(config: BackendConfig, stats?: BackendStats | null): Pick<S
       circuitCooldownMinutes: Math.max(1, Math.floor(Number(modelCircuitBreaker?.cooldownMinutes) || 10)),
       rateLimitKeyCooldownSeconds: Math.max(1, Math.floor(Number(modelCircuitBreaker?.rateLimitKeyCooldownSeconds) || 60)),
       authKeyCooldownMinutes: Math.max(1, Math.floor(Number(modelCircuitBreaker?.authKeyCooldownMinutes) || 30)),
-      transientFailureThreshold: Math.max(1, Math.floor(Number(modelCircuitBreaker?.transientFailureThreshold) || 3)),
-      transientCooldownSeconds: Math.max(1, Math.floor(Number(modelCircuitBreaker?.transientCooldownSeconds) || 60)),
-      compatibilityCooldownMinutes: Math.max(1, Math.floor(Number(modelCircuitBreaker?.compatibilityCooldownMinutes) || 10)),
       enabled: model.enabled !== false,
       createdAt: Date.now(),
       totalRequests,
@@ -653,9 +638,6 @@ function uiToBackend(state: State): BackendConfig {
       cooldownMinutes: Math.max(1, Math.floor(Number(chain.circuitCooldownMinutes) || 10)),
       rateLimitKeyCooldownSeconds: Math.max(1, Math.floor(Number(chain.rateLimitKeyCooldownSeconds) || 60)),
       authKeyCooldownMinutes: Math.max(1, Math.floor(Number(chain.authKeyCooldownMinutes) || 30)),
-      transientFailureThreshold: Math.max(1, Math.floor(Number(chain.transientFailureThreshold) || 3)),
-      transientCooldownSeconds: Math.max(1, Math.floor(Number(chain.transientCooldownSeconds) || 60)),
-      compatibilityCooldownMinutes: Math.max(1, Math.floor(Number(chain.compatibilityCooldownMinutes) || 10)),
     },
     targets: [...chain.models]
       .sort((a, b) => a.priority - b.priority)

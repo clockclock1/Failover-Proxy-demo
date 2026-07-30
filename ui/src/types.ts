@@ -36,9 +36,6 @@ export interface FailoverChain {
   circuitCooldownMinutes: number;
   rateLimitKeyCooldownSeconds: number;
   authKeyCooldownMinutes: number;
-  transientFailureThreshold: number;
-  transientCooldownSeconds: number;
-  compatibilityCooldownMinutes: number;
   enabled: boolean;
   createdAt: number;
   totalRequests: number;
