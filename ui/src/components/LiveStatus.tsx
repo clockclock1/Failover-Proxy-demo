@@ -53,6 +53,53 @@ const memoryLabels: Record<string, string> = {
   collectionError: '采样说明',
 };
 
+const runtimeStateMemoryLabels: Record<string, string> = {
+  circuitBreakers: '熔断记录',
+  apiKeyCooldowns: 'Key 冷却记录',
+  roundRobin: '轮询记录',
+  modelStatistics: '模型统计（含一天历史）',
+  providerHealthCache: '健康检查缓存',
+  modelSourceCache: '动态模型缓存',
+  activeThreads: '活动请求线程',
+  requestLogs: '请求日志缓存',
+  adminSessions: '管理登录会话',
+};
+
+const runtimeMemoryPartLabels: Record<string, string> = {
+  contentBytes: '内容',
+  hashBucketBytes: '哈希桶',
+  lockAndShardBytes: '锁与分片',
+  containerBytes: '数组/容器',
+};
+
+type RuntimeStateMemoryItem = {
+  entries?: number;
+  contentBytes?: number;
+  hashBucketBytes?: number;
+  lockAndShardBytes?: number;
+  containerBytes?: number;
+  capacity?: number;
+  estimatedBytes?: number;
+};
+
+function isRuntimeStateMemoryItem(value: unknown): value is RuntimeStateMemoryItem {
+  return Boolean(value)
+    && typeof value === 'object'
+    && typeof (value as RuntimeStateMemoryItem).estimatedBytes === 'number';
+}
+
+function runtimeMemoryNumber(value: unknown, key: string) {
+  if (!value || typeof value !== 'object') return undefined;
+  const item = value as Record<string, unknown>;
+  return typeof item[key] === 'number' ? item[key] as number : undefined;
+}
+
+function runtimeMemoryText(value: unknown, key: string) {
+  if (!value || typeof value !== 'object') return '';
+  const item = value as Record<string, unknown>;
+  return typeof item[key] === 'string' ? item[key] as string : '';
+}
+
 function formatMemoryValue(key: string, value: unknown) {
   if (typeof value === 'number' && key.toLowerCase().includes('bytes')) {
     return formatBytes(value);
@@ -156,6 +203,7 @@ function ThreadCard({ thread, now, index }: { thread: ActiveThread; now: number;
 export type SharedLiveStatusData = {
   activeThreads: ActiveThread[];
   memory?: Record<string, unknown>;
+  runtimeStateMemory?: Record<string, RuntimeStateMemoryItem | string>;
 };
 
 export default function LiveStatus({ sharedData }: { sharedData?: SharedLiveStatusData }) {
@@ -169,6 +217,12 @@ export default function LiveStatus({ sharedData }: { sharedData?: SharedLiveStat
   const threads = sharedData?.activeThreads || state.activeThreads;
   const activeChains = new Set(threads.map(thread => thread.chainName)).size;
   const memory = sharedData?.memory || state.backendStats?.memory;
+  const runtimeStateMemory = sharedData?.runtimeStateMemory || state.backendStats?.runtimeStateMemory;
+  const runtimeStateEntries = Object.entries(runtimeStateMemory || {})
+    .filter(([, value]) => isRuntimeStateMemoryItem(value));
+  const runtimeStateNote = typeof runtimeStateMemory?.estimateNote === 'string'
+    ? runtimeStateMemory.estimateNote
+    : '';
   const memoryEntries = Object.entries(memory || {});
   const primaryMetric = memory?.primaryMetric;
   const primaryMetricValue = primaryMetric
@@ -345,6 +399,68 @@ export default function LiveStatus({ sharedData }: { sharedData?: SharedLiveStat
         >
           <div className="live-memory-panel-inner">
             <div className="motion-card rounded-xl border border-slate-200 bg-white p-4" style={{ animationDelay: '115ms' }}>
+              <div className="mb-4 border-b border-slate-100 pb-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">运行时状态占用估算</p>
+                    <p className="mt-1 text-xs text-slate-400">可直接看出哪类缓存或状态记录正在增长。</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 font-mono text-xs text-slate-500">
+                    {runtimeStateEntries.reduce((total, [, item]) => total + (item.entries || 0), 0).toLocaleString()} 条
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {runtimeStateEntries.map(([key, item]) => (
+                    <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs text-slate-400">{runtimeStateMemoryLabels[key] || key}</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-slate-700">{formatBytes(item.estimatedBytes)}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {(item.entries || 0).toLocaleString()} 条
+                        {typeof item.capacity === 'number' && ` · ${item.capacity.toLocaleString()} 槽`}
+                      </p>
+                      <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
+                        {Object.entries(runtimeMemoryPartLabels).map(([part, label]) => (
+                          <span key={part}>{label} {formatBytes(item[part as keyof RuntimeStateMemoryItem] as number)}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {!runtimeStateEntries.length && (
+                    <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">暂无运行时状态数据</div>
+                  )}
+                </div>
+                {runtimeStateNote && <p className="mt-3 text-[11px] text-slate-400">{runtimeStateNote}</p>}
+              </div>
+              <div className="mb-4 border-b border-slate-100 pb-4">
+                <p className="text-sm font-semibold text-slate-700">进程剩余项与不可直接采样项</p>
+                <p className="mt-1 text-xs text-slate-400">这些项目必须如实标记为“可计算的剩余量”或“上游库未公开”，不能误判成某张表泄露。</p>
+                <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-400">未归类进程内存</p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-slate-700">
+                      {formatBytes(runtimeMemoryNumber(runtimeStateMemory?.processRemainder, 'unattributedBytes'))}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {runtimeMemoryText(runtimeStateMemory?.processRemainder, 'processMetricLabel')}：{formatBytes(runtimeMemoryNumber(runtimeStateMemory?.processRemainder, 'processBytes'))}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">{runtimeMemoryText(runtimeStateMemory?.processRemainder, 'note')}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-400">网络缓冲 / 连接池</p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-slate-700">未公开字节数</p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      当前流 {runtimeMemoryNumber(runtimeStateMemory?.networkBuffers, 'activeStreamCount') || 0} · 每主机最多空闲 {runtimeMemoryNumber(runtimeStateMemory?.networkBuffers, 'maxIdleConnectionsPerHost') || 0} 条 · {runtimeMemoryNumber(runtimeStateMemory?.networkBuffers, 'idleTimeoutSeconds') || 0} 秒
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">{runtimeMemoryText(runtimeStateMemory?.networkBuffers, 'note')}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-400">分配器碎片</p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-slate-700">无法跨平台精确读取</p>
+                    <p className="mt-1 text-[11px] text-slate-500">{runtimeMemoryText(runtimeStateMemory?.allocator, 'name')}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">{runtimeMemoryText(runtimeStateMemory?.allocator, 'note')}</p>
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {memoryEntries.map(([key, value]) => (
                   <div key={key} className="rounded-lg bg-slate-50 p-3">

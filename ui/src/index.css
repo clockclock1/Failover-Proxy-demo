@@ -1927,6 +1927,122 @@ button:active {
   animation: none;
 }
 
+/* Circuit-breaker page: semantic theme surface so its emergency state does
+   not inherit the light gradients used by the rest of the dashboard. */
+.uiverse-shell[data-theme="dark"] .circuit-breaker-hero {
+  background:
+    radial-gradient(circle at 88% 16%, rgba(251, 113, 133, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(69, 10, 10, 0.64), rgba(15, 23, 42, 0.96) 48%, rgba(49, 16, 57, 0.74)) !important;
+  border-color: rgba(251, 113, 133, 0.32) !important;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.34), inset 0 1px 0 rgba(254, 202, 202, 0.08) !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-title {
+  color: #fecdd3 !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-title svg {
+  color: #fb7185;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-subtitle,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-panel-note,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-target,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-time,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-empty-note {
+  color: #94a3b8 !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-live-badge,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-refresh-badge {
+  background: rgba(69, 10, 10, 0.48) !important;
+  border-color: rgba(251, 113, 133, 0.34) !important;
+  color: #fda4af !important;
+  box-shadow: inset 0 1px 0 rgba(254, 202, 202, 0.08) !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-live-indicator,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-refresh-indicator,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-count-indicator {
+  color: #fda4af !important;
+}
+
+.uiverse-shell[data-theme="light"] .circuit-breaker-live-indicator,
+.uiverse-shell[data-theme="light"] .circuit-breaker-refresh-indicator,
+.uiverse-shell[data-theme="light"] .circuit-breaker-count-indicator {
+  color: #e11d48 !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-stat,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-panel {
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(24, 24, 45, 0.94)) !important;
+  border-color: rgba(125, 211, 252, 0.18) !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-panel-header,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-table-head {
+  background: rgba(30, 41, 59, 0.64) !important;
+  border-color: rgba(125, 211, 252, 0.14) !important;
+  color: #94a3b8 !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-panel-title,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-model,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-empty-title {
+  color: #e2e8f0 !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-row:hover {
+  background: rgba(127, 29, 29, 0.18) !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-target-icon,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-remaining,
+.uiverse-shell[data-theme="dark"] .circuit-breaker-count {
+  background: rgba(127, 29, 29, 0.42) !important;
+  color: #fda4af !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-kind {
+  background: rgba(120, 53, 15, 0.36) !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+  color: #fcd34d !important;
+}
+
+.uiverse-shell[data-theme="dark"] .circuit-breaker-upstream { color: #cbd5e1 !important; }
+.uiverse-shell[data-theme="dark"] .circuit-breaker-failures { color: #fda4af !important; }
+.uiverse-shell[data-theme="dark"] .circuit-breaker-empty-icon { background: rgba(6, 78, 59, 0.58) !important; color: #6ee7b7 !important; }
+
+.uiverse-shell[data-theme="light"] .circuit-breaker-hero {
+  background: linear-gradient(135deg, #fff1f2, #fff 52%, #fffbeb) !important;
+  border-color: rgba(244, 63, 94, 0.28) !important;
+}
+
+.uiverse-shell[data-theme="light"] .circuit-breaker-title { color: #9f1239 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-title svg { color: #e11d48; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-subtitle,
+.uiverse-shell[data-theme="light"] .circuit-breaker-panel-note,
+.uiverse-shell[data-theme="light"] .circuit-breaker-target,
+.uiverse-shell[data-theme="light"] .circuit-breaker-time,
+.uiverse-shell[data-theme="light"] .circuit-breaker-empty-note { color: #64748b !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-live-badge,
+.uiverse-shell[data-theme="light"] .circuit-breaker-refresh-badge { background: rgba(255,255,255,.8) !important; border-color: rgba(244,63,94,.25) !important; color: #e11d48 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-stat,
+.uiverse-shell[data-theme="light"] .circuit-breaker-panel { background: #fff !important; border-color: #e2e8f0 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-panel-header,
+.uiverse-shell[data-theme="light"] .circuit-breaker-table-head { background: #f8fafc !important; border-color: #e2e8f0 !important; color: #64748b !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-panel-title,
+.uiverse-shell[data-theme="light"] .circuit-breaker-model,
+.uiverse-shell[data-theme="light"] .circuit-breaker-empty-title { color: #1e293b !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-row:hover { background: #fff1f2 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-target-icon,
+.uiverse-shell[data-theme="light"] .circuit-breaker-remaining,
+.uiverse-shell[data-theme="light"] .circuit-breaker-count { background: #fff1f2 !important; color: #e11d48 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-kind { background: #fffbeb !important; border-color: #fde68a !important; color: #b45309 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-upstream { color: #475569 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-failures { color: #e11d48 !important; }
+.uiverse-shell[data-theme="light"] .circuit-breaker-empty-icon { background: #ecfdf5 !important; color: #059669 !important; }
+
 .table-row-motion {
   animation: none;
   transition:

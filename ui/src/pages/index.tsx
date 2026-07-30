@@ -9,6 +9,7 @@ export const pageComponents: Record<Page, ComponentType> = {
   'model-stats': lazy(() => import('./ModelStatsPage')),
   endpoints: lazy(() => import('./ProxyEndpointsPage')),
   'live-status': lazy(() => import('./LiveStatusPage')),
+  'circuit-breakers': lazy(() => import('./CircuitBreakersPage')),
   logs: lazy(() => import('./LogsPage')),
 };
 
@@ -20,6 +21,7 @@ export const pagePaths: Record<Page, string> = {
   'model-stats': '/ui/model-stats',
   endpoints: '/ui/endpoints',
   'live-status': '/ui/live-status',
+  'circuit-breakers': '/ui/circuit-breakers',
   logs: '/ui/logs',
 };
 

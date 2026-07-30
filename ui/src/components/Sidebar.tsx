@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   Activity,
+  ShieldAlert,
   BarChart3,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +28,7 @@ export const navItems: { page: Page; label: string; icon: ReactNode }[] = [
   { page: 'model-stats', label: '模型统计', icon: <BarChart3 size={20} /> },
   { page: 'endpoints', label: '代理端点', icon: <Link2 size={20} /> },
   { page: 'live-status', label: '实时状况', icon: <Activity size={20} /> },
+  { page: 'circuit-breakers', label: '已熔断模型', icon: <ShieldAlert size={20} /> },
   { page: 'logs', label: '请求日志', icon: <ScrollText size={20} /> },
 ];
 

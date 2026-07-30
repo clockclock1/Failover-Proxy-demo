@@ -26,6 +26,7 @@ function SharedLiveStatusPage() {
           setData({
             activeThreads: Array.isArray(payload.activeThreads) ? payload.activeThreads : [],
             memory: payload.memory || {},
+            runtimeStateMemory: payload.runtimeStateMemory || {},
           });
           setError('');
         }

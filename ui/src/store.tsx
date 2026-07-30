@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useCallback, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { Provider, FailoverChain, Page, LogEntry, ActiveThread, ModelCapability, ModelTestResult, ModelTestTarget, ChannelModelStats, LogSettings } from './types';
+import type { Provider, FailoverChain, Page, LogEntry, ActiveThread, ActiveCircuitBreaker, ModelCapability, ModelTestResult, ModelTestTarget, ChannelModelStats, LogSettings } from './types';
 
 interface BackendTarget {
   name?: string;
@@ -88,6 +88,10 @@ interface BackendStats {
     dataBytes?: number;
     collectionError?: string | null;
   };
+  runtimeStateMemory?: Record<string, {
+    entries?: number;
+    estimatedBytes?: number;
+  } | string>;
   chains?: Record<string, {
     requests: number;
     successes: number;
@@ -108,6 +112,7 @@ interface BackendStats {
     error?: string;
   }>;
   activeThreads?: ActiveThread[];
+  circuitBreakers?: ActiveCircuitBreaker[];
   logSettings?: LogSettings;
   logsPath?: string;
   modelStatsPath?: string;
@@ -712,6 +717,7 @@ function pageStatsPath(page: Page) {
     case 'chains':
     case 'model-stats':
     case 'live-status':
+    case 'circuit-breakers':
     case 'logs':
       return `/api/stats/page/${page}`;
     default:
@@ -983,7 +989,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
     dispatch({ type: 'SET_PAGE_STATS_LOADING', page, loading: true });
     load(true);
-    if (page !== 'live-status') {
+    if (page !== 'live-status' && page !== 'circuit-breakers') {
       return () => {
         stopped = true;
         activeController?.abort();

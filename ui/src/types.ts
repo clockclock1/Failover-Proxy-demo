@@ -47,7 +47,18 @@ export interface FailoverChain {
   successRate: number | null;
 }
 
-export type Page = 'dashboard' | 'providers' | 'model-tests' | 'chains' | 'model-stats' | 'endpoints' | 'live-status' | 'logs';
+export type Page = 'dashboard' | 'providers' | 'model-tests' | 'chains' | 'model-stats' | 'endpoints' | 'live-status' | 'circuit-breakers' | 'logs';
+
+export interface ActiveCircuitBreaker {
+  key: string;
+  model: string;
+  targetName: string;
+  targetModel: string;
+  targetBaseUrl: string;
+  failures: number;
+  disabledUntil: number;
+  failureKind: 'authentication' | 'rate_limited' | 'compatibility' | 'transient' | 'other';
+}
 
 export interface ChannelModelStats {
   name: string;
