@@ -34,8 +34,6 @@ export interface FailoverChain {
   targetMaxRetries: number;
   circuitFailureThreshold: number;
   circuitCooldownMinutes: number;
-  rateLimitKeyCooldownSeconds: number;
-  authKeyCooldownMinutes: number;
   enabled: boolean;
   createdAt: number;
   totalRequests: number;
@@ -54,7 +52,7 @@ export interface ActiveCircuitBreaker {
   targetBaseUrl: string;
   failures: number;
   disabledUntil: number;
-  failureKind: 'authentication' | 'rate_limited' | 'compatibility' | 'transient' | 'other';
+  failureKind: 'failure' | 'authentication' | 'rate_limited' | 'compatibility' | 'transient' | 'other';
 }
 
 export interface ChannelModelStats {

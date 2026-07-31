@@ -6,6 +6,7 @@ import { cn } from '../utils/cn';
 import AnimatedGlyph from './AnimatedGlyph';
 
 const kindLabel: Record<ActiveCircuitBreaker['failureKind'], string> = {
+  failure: '上游故障',
   authentication: '认证失败',
   rate_limited: '限流',
   compatibility: '接口不兼容',

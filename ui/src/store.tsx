@@ -25,8 +25,6 @@ interface BackendModel {
   circuitBreaker?: {
     failureThreshold?: number;
     cooldownMinutes?: number;
-    rateLimitKeyCooldownSeconds?: number;
-    authKeyCooldownMinutes?: number;
   };
   targets?: BackendTarget[];
 }
@@ -50,8 +48,6 @@ interface BackendConfig {
   circuitBreaker?: {
     failureThreshold?: number;
     cooldownMinutes?: number;
-    rateLimitKeyCooldownSeconds?: number;
-    authKeyCooldownMinutes?: number;
   };
   modelSource?: unknown;
   providers?: BackendProvider[];
@@ -169,8 +165,6 @@ const defaultConfig: BackendConfig = {
   circuitBreaker: {
     failureThreshold: 3,
     cooldownMinutes: 10,
-    rateLimitKeyCooldownSeconds: 60,
-    authKeyCooldownMinutes: 30,
   },
   modelSource: {
     enabled: false,
@@ -255,8 +249,6 @@ function normalizeChain(chain: FailoverChain): FailoverChain {
     targetMaxRetries: Math.max(0, Math.floor(Number(chain.targetMaxRetries ?? firstModel?.maxRetries) || 0)),
     circuitFailureThreshold: Math.max(1, Math.floor(Number(chain.circuitFailureThreshold) || 3)),
     circuitCooldownMinutes: Math.max(1, Math.floor(Number(chain.circuitCooldownMinutes) || 10)),
-    rateLimitKeyCooldownSeconds: Math.max(1, Math.floor(Number(chain.rateLimitKeyCooldownSeconds) || 60)),
-    authKeyCooldownMinutes: Math.max(1, Math.floor(Number(chain.authKeyCooldownMinutes) || 30)),
     models,
   };
 }
@@ -559,8 +551,6 @@ function backendToUi(config: BackendConfig, stats?: BackendStats | null): Pick<S
       targetMaxRetries: Math.max(0, Math.floor(Number(firstTarget?.maxRetries) || 0)),
       circuitFailureThreshold: Math.max(1, Math.floor(Number(modelCircuitBreaker?.failureThreshold) || 3)),
       circuitCooldownMinutes: Math.max(1, Math.floor(Number(modelCircuitBreaker?.cooldownMinutes) || 10)),
-      rateLimitKeyCooldownSeconds: Math.max(1, Math.floor(Number(modelCircuitBreaker?.rateLimitKeyCooldownSeconds) || 60)),
-      authKeyCooldownMinutes: Math.max(1, Math.floor(Number(modelCircuitBreaker?.authKeyCooldownMinutes) || 30)),
       enabled: model.enabled !== false,
       createdAt: Date.now(),
       totalRequests,
@@ -636,8 +626,6 @@ function uiToBackend(state: State): BackendConfig {
     circuitBreaker: {
       failureThreshold: Math.max(1, Math.floor(Number(chain.circuitFailureThreshold) || 3)),
       cooldownMinutes: Math.max(1, Math.floor(Number(chain.circuitCooldownMinutes) || 10)),
-      rateLimitKeyCooldownSeconds: Math.max(1, Math.floor(Number(chain.rateLimitKeyCooldownSeconds) || 60)),
-      authKeyCooldownMinutes: Math.max(1, Math.floor(Number(chain.authKeyCooldownMinutes) || 30)),
     },
     targets: [...chain.models]
       .sort((a, b) => a.priority - b.priority)
