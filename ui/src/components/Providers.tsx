@@ -21,6 +21,8 @@ import type { Provider } from '../types';
 import { cn } from '../utils/cn';
 import LoadingOverlay, { LoadingSpinner } from './Loading';
 
+type ModelListFilter = 'new' | 'existing' | 'deleted';
+
 function uniqueStrings(items: string[]) {
   return [...new Set(items.map(item => item.trim()).filter(Boolean))];
 }
@@ -189,7 +191,9 @@ function FetchModelsModal({
   const { state, fetchProviderModels } = useStore();
   const [loading, setLoading] = useState(false);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [hasFetchedModelList, setHasFetchedModelList] = useState(false);
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set(provider.models));
+  const [activeModelFilter, setActiveModelFilter] = useState<ModelListFilter>('existing');
   const [error, setError] = useState('');
   const [customUrl, setCustomUrl] = useState(provider.baseUrl + '/models');
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,6 +201,24 @@ function FetchModelsModal({
   const [customModels, setCustomModels] = useState<string[]>([]);
 
   const availableModels = uniqueStrings([...provider.models, ...fetchedModels, ...customModels]);
+  const committedModels = new Set(provider.models);
+  const fetchedModelSet = new Set(fetchedModels);
+  const customModelSet = new Set(customModels);
+  const newFetchedModelCount = fetchedModels.filter(model => !committedModels.has(model)).length;
+  const existingModelCount = committedModels.size;
+  const removedUpstreamModelCount = hasFetchedModelList
+    ? [...committedModels].filter(model => !fetchedModelSet.has(model) && !customModelSet.has(model)).length
+    : 0;
+  const modelsForActiveFilter = activeModelFilter === 'new'
+    ? fetchedModels.filter(model => !committedModels.has(model))
+    : activeModelFilter === 'existing'
+      ? availableModels.filter(model => committedModels.has(model))
+      : hasFetchedModelList
+        ? availableModels.filter(model => committedModels.has(model) && !fetchedModelSet.has(model) && !customModelSet.has(model))
+        : [];
+  const filteredModels = modelsForActiveFilter.filter(model =>
+    model.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const fetchModels = async () => {
     setLoading(true);
@@ -204,6 +226,7 @@ function FetchModelsModal({
     try {
       const models = uniqueStrings(await fetchProviderModels(customUrl, firstApiKey(provider)));
       setFetchedModels(models);
+      setHasFetchedModelList(true);
       const nextAvailableModels = uniqueStrings([...provider.models, ...models, ...customModels]);
       setSelectedModels(current => new Set(
         [...current].filter(model => nextAvailableModels.includes(model))
@@ -222,12 +245,12 @@ function FetchModelsModal({
     setSelectedModels(next);
   };
 
-  const selectAll = () => setSelectedModels(new Set(filteredModels));
-  const deselectAll = () => setSelectedModels(new Set());
-
-  const filteredModels = availableModels.filter(m =>
-    m.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const selectAll = () => setSelectedModels(current => new Set([...current, ...filteredModels]));
+  const deselectAll = () => setSelectedModels(current => {
+    const next = new Set(current);
+    filteredModels.forEach(model => next.delete(model));
+    return next;
+  });
 
   const addCustomModel = () => {
     const model = customModelName.trim();
@@ -313,12 +336,40 @@ function FetchModelsModal({
           )}
 
           {/* Model List */}
-          {availableModels.length > 0 && (
+          {(availableModels.length > 0 || hasFetchedModelList) && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  可用模型 ({availableModels.length})
-                </label>
+                <div role="tablist" aria-label="模型分类" className="flex min-w-0 items-center text-sm font-medium">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeModelFilter === 'new'}
+                    onClick={() => setActiveModelFilter('new')}
+                    className={cn('transition-colors', activeModelFilter === 'new' ? 'text-blue-600' : 'text-slate-700 hover:text-blue-600')}
+                  >
+                    新获取的模型 ({newFetchedModelCount})
+                  </button>
+                  <span className="mx-1.5 text-slate-300">/</span>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeModelFilter === 'existing'}
+                    onClick={() => setActiveModelFilter('existing')}
+                    className={cn('transition-colors', activeModelFilter === 'existing' ? 'text-blue-600' : 'text-slate-700 hover:text-blue-600')}
+                  >
+                    已有的模型 ({existingModelCount})
+                  </button>
+                  <span className="mx-1.5 text-slate-300">/</span>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeModelFilter === 'deleted'}
+                    onClick={() => setActiveModelFilter('deleted')}
+                    className={cn('transition-colors', activeModelFilter === 'deleted' ? 'text-blue-600' : 'text-slate-700 hover:text-blue-600')}
+                  >
+                    上游已删除的模型 ({removedUpstreamModelCount})
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <button onClick={selectAll} className="text-xs text-blue-600 hover:text-blue-700">全选</button>
                   <span className="text-slate-300">|</span>
@@ -399,6 +450,11 @@ function FetchModelsModal({
                     </button>
                   );
                 })}
+                {filteredModels.length === 0 && (
+                  <p className="px-4 py-8 text-center text-sm text-slate-400">
+                    {searchTerm ? '没有匹配的模型' : '此分类暂无模型'}
+                  </p>
+                )}
               </div>
 
               <p className="text-xs text-slate-400 mt-2">

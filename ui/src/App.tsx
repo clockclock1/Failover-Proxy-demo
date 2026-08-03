@@ -4,6 +4,7 @@ import { StoreProvider, useStore } from './store';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import LoadingOverlay, { LoadingSpinner } from './components/Loading';
+import AsyncPageErrorBoundary from './components/AsyncPageErrorBoundary';
 import { isKnownAppPath, pageComponents, pageFromPathname, pathForPage } from './pages';
 
 type ThemeMode = 'dark' | 'light';
@@ -21,24 +22,30 @@ function PageContent() {
 
   return (
     <div key={state.currentPage} className="page-motion">
-      <Suspense key={state.currentPage} fallback={<PageLoading />}>
-        <div className={state.pageStatsLoading ? 'hidden' : undefined}>
-          <PageComponent key={state.currentPage} />
-        </div>
-        {state.pageStatsLoading && <PageLoading label="正在加载状态..." />}
-      </Suspense>
+      <AsyncPageErrorBoundary pageKey={state.currentPage}>
+        {state.pageStatsLoading ? (
+          <PageLoading label="正在加载页面状态…" />
+        ) : (
+          <Suspense key={state.currentPage} fallback={<PageLoading label="正在加载页面内容…" />}>
+            <PageComponent key={state.currentPage} />
+          </Suspense>
+        )}
+      </AsyncPageErrorBoundary>
     </div>
   );
 }
 
-function PageLoading({ label = '正在加载页面...' }: { label?: string }) {
+function PageLoading({ label = '正在加载页面…' }: { label?: string }) {
   return (
-    <div className="flex min-h-72 items-center justify-center text-sm text-slate-500">
-      <div className="flex flex-col items-center gap-5">
+    <section className="page-loading-state" aria-live="polite" aria-busy="true">
+      <div className="page-loading-state__card">
         <LoadingSpinner size="md" className="text-cyan-400" />
-        <span className="font-medium">{label}</span>
+        <div className="page-loading-state__copy">
+          <strong>{label}</strong>
+          <span>请稍候，正在同步最新数据</span>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 

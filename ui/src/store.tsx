@@ -149,6 +149,7 @@ type Action =
   | { type: 'ADD_CHAIN'; chain: FailoverChain }
   | { type: 'UPDATE_CHAIN'; chain: FailoverChain }
   | { type: 'DELETE_CHAIN'; id: string }
+  | { type: 'SYNC_CHAIN_MODELS'; id: string }
   | { type: 'ADD_LOG'; log: LogEntry }
   | { type: 'SET_LOG_SETTINGS'; settings: LogSettings };
 
@@ -253,6 +254,19 @@ function normalizeChain(chain: FailoverChain): FailoverChain {
   };
 }
 
+function synchronizeChainModelsWithProviders(chains: FailoverChain[], providers: Provider[]) {
+  const selectedModelsByProvider = new Map(
+    providers.map(provider => [provider.id, new Set(uniqueStrings(provider.models || []))])
+  );
+  return chains.map(chain => ({
+    ...chain,
+    models: normalizeChainModels(chain.models.filter(model => {
+      const selectedModels = selectedModelsByProvider.get(model.providerId);
+      return !selectedModels || selectedModels.has(model.modelName);
+    })),
+  }));
+}
+
 function markConfigChanged(state: State, updates: Partial<State>): State {
   return {
     ...state,
@@ -350,8 +364,16 @@ function reducer(state: State, action: Action): State {
           models: normalizeChainModels(chain.models.filter(model => model.providerId !== action.id)),
         })),
       });
-    case 'SET_PROVIDER_MODELS':
-      return markConfigChanged(state, { providers: state.providers.map(p => p.id === action.id ? { ...p, models: action.models } : p) });
+    case 'SET_PROVIDER_MODELS': {
+      const providers = state.providers.map(provider => provider.id === action.id
+        ? { ...provider, models: uniqueStrings(action.models) }
+        : provider
+      );
+      return markConfigChanged(state, {
+        providers,
+        chains: synchronizeChainModelsWithProviders(state.chains, providers),
+      });
+    }
     case 'SET_PROVIDER_STATUS':
       return { ...state, providers: state.providers.map(p => p.id === action.id ? { ...p, status: action.status, latency: action.latency, lastCheck: Date.now() } : p) };
     case 'SET_PROVIDER_HEALTHS':
@@ -377,6 +399,17 @@ function reducer(state: State, action: Action): State {
       return markConfigChanged(state, { chains: state.chains.map(c => c.id === action.chain.id ? normalizeChain(action.chain) : c) });
     case 'DELETE_CHAIN':
       return markConfigChanged(state, { chains: state.chains.filter(c => c.id !== action.id) });
+    case 'SYNC_CHAIN_MODELS': {
+      const synchronizedChain = synchronizeChainModelsWithProviders(state.chains, state.providers)
+        .find(chain => chain.id === action.id);
+      const currentChain = state.chains.find(chain => chain.id === action.id);
+      if (!synchronizedChain || !currentChain || synchronizedChain.models.length === currentChain.models.length) {
+        return state;
+      }
+      return markConfigChanged(state, {
+        chains: state.chains.map(chain => chain.id === action.id ? synchronizedChain : chain),
+      });
+    }
     case 'ADD_LOG':
       return { ...state, logs: [action.log, ...state.logs].slice(0, 200) };
     case 'SET_LOG_SETTINGS':
@@ -607,8 +640,9 @@ function normalizedApiKeyMode(mode: unknown, apiKeys: string[], apiKey: string):
 
 function uiToBackend(state: State): BackendConfig {
   const base = state.backendConfig || defaultConfig;
+  const synchronizedChains = synchronizeChainModelsWithProviders(state.chains, state.providers);
   const keyMap = new Map<string, string>();
-  state.chains.forEach((chain, index) => {
+  synchronizedChains.forEach((chain, index) => {
     if (chain.proxyApiKey) keyMap.set(chain.proxyApiKey, chain.name || `chain-${index + 1}`);
   });
 
@@ -618,7 +652,7 @@ function uiToBackend(state: State): BackendConfig {
     enabled: true,
   }));
 
-  const models: BackendModel[] = state.chains.map((chain) => ({
+  const models: BackendModel[] = synchronizedChains.map((chain) => ({
     publicName: chain.proxyModelName,
     contextWindowTokens: Math.max(1024, Math.floor(Number(chain.contextWindowTokens) || 1_000_000)),
     enabled: chain.enabled,
@@ -938,11 +972,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const page = state.currentPage;
     if (!pageStatsPath(page)) return undefined;
     let activeController: AbortController | null = null;
+    let requestTimeout: number | null = null;
     let stopped = false;
     const load = (firstLoad = false) => {
       if (activeController) return;
       const controller = new AbortController();
       activeController = controller;
+      requestTimeout = window.setTimeout(() => controller.abort(), 15_000);
       fetchPageStats(page, controller.signal)
         .catch((err) => {
           if (!(err instanceof DOMException && err.name === 'AbortError')) {
@@ -951,6 +987,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return undefined;
         })
         .finally(() => {
+          if (requestTimeout !== null) {
+            window.clearTimeout(requestTimeout);
+            requestTimeout = null;
+          }
           if (activeController === controller) activeController = null;
           if (firstLoad) {
             dispatch({ type: 'SET_PAGE_STATS_LOADING', page, loading: false });
@@ -963,6 +1003,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return () => {
         stopped = true;
         activeController?.abort();
+        if (requestTimeout !== null) window.clearTimeout(requestTimeout);
       };
     }
     const timer = window.setInterval(() => {
@@ -971,6 +1012,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       stopped = true;
       activeController?.abort();
+      if (requestTimeout !== null) window.clearTimeout(requestTimeout);
       window.clearInterval(timer);
     };
   }, [state.configLoaded, state.currentPage, state.statsRefreshNonce, fetchPageStats]);

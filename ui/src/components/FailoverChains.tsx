@@ -20,6 +20,7 @@ import {
   Power,
   GripVertical,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '../store';
@@ -81,7 +82,7 @@ function ChainEditor({
   const [circuitFailureThreshold, setCircuitFailureThreshold] = useState(chain?.circuitFailureThreshold || 3);
   const [circuitCooldownMinutes, setCircuitCooldownMinutes] = useState(chain?.circuitCooldownMinutes || 10);
   const [models, setModels] = useState<FailoverModel[]>(() => normalizeQueue(chain?.models || []));
-  const [activeSection, setActiveSection] = useState<'settings' | 'breaker' | 'models'>('settings');
+  const [activeSection, setActiveSection] = useState<'settings' | 'models'>('settings');
   const [modelQuery, setModelQuery] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -290,24 +291,6 @@ function ChainEditor({
             </button>
             <button
               type="button"
-              onClick={() => setActiveSection('breaker')}
-              className={cn(
-                'chain-editor-tab flex min-w-[180px] items-center gap-3 rounded-lg border px-3 py-3 text-left transition-all',
-                activeSection === 'breaker'
-                  ? 'border-amber-200 bg-white text-amber-700 shadow-sm'
-                  : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-700'
-              )}
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                <ShieldAlert size={16} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold">熔断策略</span>
-                  <span className="block truncate text-xs opacity-75">故障阈值和禁用时长</span>
-              </span>
-            </button>
-            <button
-              type="button"
               onClick={() => setActiveSection('models')}
               className={cn(
                 'chain-editor-tab flex min-w-[180px] items-center gap-3 rounded-lg border px-3 py-3 text-left transition-all',
@@ -436,7 +419,7 @@ function ChainEditor({
 
                   </>
                 )}
-                {activeSection === 'breaker' && (
+                {activeSection === 'settings' && (
                   <>
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-start gap-3">
@@ -733,6 +716,7 @@ export default function FailoverChains() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingChain, setEditingChain] = useState<FailoverChain | undefined>();
   const [expandedChain, setExpandedChain] = useState<string | null>(null);
+  const [syncResults, setSyncResults] = useState<Record<string, number>>({});
 
   const handleSave = (c: FailoverChain) => {
     if (editingChain) {
@@ -742,6 +726,11 @@ export default function FailoverChains() {
     }
     setShowEditor(false);
     setEditingChain(undefined);
+  };
+
+  const handleSyncModels = (chainId: string, removedCount: number) => {
+    dispatch({ type: 'SYNC_CHAIN_MODELS', id: chainId });
+    setSyncResults(current => ({ ...current, [chainId]: removedCount }));
   };
 
   return (
@@ -764,6 +753,10 @@ export default function FailoverChains() {
       <div className="space-y-4">
         {state.chains.map((chain, index) => {
           const isExpanded = expandedChain === chain.id;
+          const unselectedModelCount = chain.models.filter(model => {
+            const provider = state.providers.find(item => item.id === model.providerId);
+            return provider ? !provider.models.includes(model.modelName) : false;
+          }).length;
           return (
             <div key={chain.id} className={cn(
               'motion-card bg-white rounded-xl border overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md',
@@ -949,8 +942,36 @@ export default function FailoverChains() {
                       >
                         {chain.enabled ? '禁用' : '启用'}
                       </button>
+                      {Object.prototype.hasOwnProperty.call(syncResults, chain.id) && (
+                        <span className={cn(
+                          'text-xs',
+                          syncResults[chain.id] > 0 ? 'text-emerald-600' : 'text-slate-400'
+                        )} role="status">
+                          {syncResults[chain.id] > 0
+                            ? `已移除 ${syncResults[chain.id]} 个未选模型，待保存`
+                            : '当前模型已同步'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSyncModels(chain.id, unselectedModelCount)}
+                        title={unselectedModelCount > 0
+                          ? `移除 ${unselectedModelCount} 个已在模型提供商中取消勾选的模型`
+                          : '当前链路模型已与模型提供商的勾选项同步'}
+                        className={cn(
+                          'flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition-colors',
+                          unselectedModelCount > 0
+                            ? 'border-cyan-200 text-cyan-600 hover:bg-cyan-50'
+                            : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+                        )}
+                      >
+                        <span className="button-content-layer">
+                          <RefreshCw size={13} aria-hidden="true" />
+                          一键同步模型{unselectedModelCount > 0 ? ` (${unselectedModelCount})` : ''}
+                        </span>
+                      </button>
                       <button
                         onClick={() => { setEditingChain(chain); setShowEditor(true); }}
                         className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
