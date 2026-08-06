@@ -56,6 +56,7 @@ const memoryLabels: Record<string, string> = {
 const runtimeStateMemoryLabels: Record<string, string> = {
   circuitBreakers: '熔断记录',
   roundRobin: '轮询记录',
+  responseHistory: 'Responses 会话记录',
   modelStatistics: '模型统计（含一天历史）',
   providerHealthCache: '健康检查缓存',
   modelSourceCache: '动态模型缓存',
