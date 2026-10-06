@@ -45,19 +45,6 @@ interface BackendConfig {
   failoverStatusCodes: number[];
   requestTimeoutMs: number;
   logSettings?: LogSettings;
-  passThroughRequestEnabled?: boolean;
-  chatCompletionsToResponsesPolicy?: {
-    enabled: boolean;
-    allTargets: boolean;
-    targetNames: string[];
-    modelPatterns: string[];
-  };
-  responsesToChatCompletionsPolicy?: {
-    enabled: boolean;
-    allTargets: boolean;
-    targetNames: string[];
-    modelPatterns: string[];
-  };
   circuitBreaker?: {
     failureThreshold?: number;
     cooldownMinutes?: number;
@@ -163,8 +150,6 @@ type Action =
   | { type: 'UPDATE_CHAIN'; chain: FailoverChain }
   | { type: 'DELETE_CHAIN'; id: string }
   | { type: 'SYNC_CHAIN_MODELS'; id: string }
-  | { type: 'UPDATE_PROTOCOL_POLICY'; direction: 'chatToResponses' | 'responsesToChat'; policy: { enabled: boolean; allTargets: boolean; targetNames: string[]; modelPatterns: string[] } }
-  | { type: 'SET_REQUEST_PASSTHROUGH'; enabled: boolean }
   | { type: 'ADD_LOG'; log: LogEntry }
   | { type: 'SET_LOG_SETTINGS'; settings: LogSettings };
 
@@ -173,19 +158,6 @@ const defaultConfig: BackendConfig = {
   proxyKeys: [{ name: 'test-key', key: 'sk-local-test', enabled: true }],
   failoverStatusCodes: [401, 403, 408, 409, 429, 500, 502, 503, 504],
   requestTimeoutMs: 120000,
-  passThroughRequestEnabled: false,
-  chatCompletionsToResponsesPolicy: {
-    enabled: false,
-    allTargets: true,
-    targetNames: [],
-    modelPatterns: [],
-  },
-  responsesToChatCompletionsPolicy: {
-    enabled: false,
-    allTargets: true,
-    targetNames: [],
-    modelPatterns: [],
-  },
   logSettings: {
     maxEntries: 500,
     maxBytes: 10 * 1024 * 1024,
@@ -436,21 +408,6 @@ function reducer(state: State, action: Action): State {
       }
       return markConfigChanged(state, {
         chains: state.chains.map(chain => chain.id === action.id ? synchronizedChain : chain),
-      });
-    }
-    case 'UPDATE_PROTOCOL_POLICY': {
-      const base = state.backendConfig || defaultConfig;
-      const field = action.direction === 'chatToResponses'
-        ? 'chatCompletionsToResponsesPolicy'
-        : 'responsesToChatCompletionsPolicy';
-      return markConfigChanged(state, {
-        backendConfig: { ...base, [field]: action.policy },
-      });
-    }
-    case 'SET_REQUEST_PASSTHROUGH': {
-      const base = state.backendConfig || defaultConfig;
-      return markConfigChanged(state, {
-        backendConfig: { ...base, passThroughRequestEnabled: action.enabled },
       });
     }
     case 'ADD_LOG':

@@ -12,7 +12,6 @@ import {
   Globe,
 } from 'lucide-react';
 import { useStore } from '../store';
-import ProtocolCompatibilitySettings from './ProtocolCompatibilitySettings';
 import { cn } from '../utils/cn';
 
 export default function ProxyEndpoints() {
@@ -44,8 +43,6 @@ export default function ProxyEndpoints() {
         <h2 className="text-2xl font-bold text-slate-800">代理端点</h2>
         <p className="text-slate-500 mt-1">查看和管理代理服务的 API 端点信息</p>
       </div>
-
-      <ProtocolCompatibilitySettings />
 
       {/* Base Endpoint Config */}
       <div className="motion-card bg-white rounded-xl border border-slate-200 overflow-hidden">
